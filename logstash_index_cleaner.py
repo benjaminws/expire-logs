@@ -63,6 +63,27 @@ def get_index_epoch(index_timestamp, separator='.'):
     return time.mktime([int(part) for part in year_month_day_optionalhour] + [0, 0, 0, 0, 0])
 
 
+def _sorted_indices_from(connection, reverse=False):
+    """ Extract indicies from connection, wrap it up nicely and exit
+    appropriately
+
+    :param connection: pyes.ES connection object
+    :param reverse: Bool - Reverse results or not - default False
+    :return sorted_indices, reversed if applicable
+    """
+    try:
+        if reverse:
+            sorted_indices = reversed(sorted(set(connection.get_indices().keys())))
+        else:
+            sorted_indices = sorted(set(connection.get_indices().keys()))
+    except (NoServerAvailable, ElasticSearchException, ClusterBlockException) as e:
+        logger.exception(e)
+        sys.exit(1)
+
+    return sorted_indices
+
+
+
 def find_expired_indices(connection, logger, days_to_keep=None, hours_to_keep=None, separator='.', prefix='logstash-', out=sys.stdout, err=sys.stderr):
     """ Generator that yields expired indices.
 
@@ -74,11 +95,7 @@ def find_expired_indices(connection, logger, days_to_keep=None, hours_to_keep=No
     days_cutoff = utc_now_time - days_to_keep * 24 * 60 * 60 if days_to_keep is not None else None
     hours_cutoff = utc_now_time - hours_to_keep * 60 * 60 if hours_to_keep is not None else None
 
-    try:
-        sorted_indices = sorted(set(connection.get_indices().keys()))
-    except (NoServerAvailable, ElasticSearchException, ClusterBlockException) as e:
-        logger.exception(e)
-        sys.exit(1)
+    sorted_indices = _sorted_indices_from(connection)
 
     for index_name in sorted_indices:
         if not index_name.startswith(prefix):
@@ -128,11 +145,7 @@ def find_overusage_indices(connection, logger, disk_space_to_keep, separator='.'
     disk_usage = 0.0
     disk_limit = disk_space_to_keep * 2**30
 
-    try:
-        sorted_indices = reversed(sorted(set(connection.get_indices().keys())))
-    except (NoServerAvailable, ElasticSearchException, ClusterBlockException) as e:
-        logger.exception(e)
-        sys.exit(1)
+    sorted_indices = _sorted_indices_from(connection, reverse=True)
 
     for index_name in sorted_indices:
 
