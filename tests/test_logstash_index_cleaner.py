@@ -1,7 +1,7 @@
 import sys
 sys.path.append('.')
 
-from logstash_index_cleaner import get_index_epoch, find_expired_indices, find_overusage_indices 
+from logstash_index_cleaner import get_index_epoch, find_expired_indices, find_overusage_indices
 
 def test_get_index_epoch():
     """ This guy isn't very flexible :( """
